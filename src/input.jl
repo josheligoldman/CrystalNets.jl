@@ -1175,7 +1175,7 @@ function sanity_checks!(graph, pos, types, mat, options)
                 if (order_s, order_d, blength) ∉ alreadywarned
                     push!(alreadywarned, (order_s, order_d, blength))
                     bentmsg = bent_bond ? " and bent" : ""
-                    @ifwarn @warn lazy"""Suspiciously large$bentmsg bond found: $blength pm between $order_s and $order_d.
+                    @ifwarn @warn lazy"""Suspiciously large$bentmsg bond found: $blength Å between $order_s and $order_d.
                         $(removeflag ? "Such bonds are probably spurious and will be deleted." : "")"""
                     ret = true
                 end
@@ -1382,7 +1382,7 @@ function parse_as_cif(cif::CIF, options::Options, name::String)
             end
             _j = _i # correction to j based on ignored atoms
             current_ignored_j = current_ignored_i
-            for j in (i+1):n
+            for j in i:n
                 if j == current_ignored_j
                     _j += 1
                     current_ignored_j = get(ignored, _j, 0)
@@ -1393,7 +1393,7 @@ function parse_as_cif(cif::CIF, options::Options, name::String)
                 __i = i - _i + 1
                 __j = j - _j + 1
                 push!(bonds[__i], (__j, dist))
-                push!(bonds[__j], (__i, dist))
+                __i == __j || push!(bonds[__j], (__i, dist))
             end
         end
     end

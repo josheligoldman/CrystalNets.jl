@@ -347,7 +347,6 @@ function edges_from_bonds(bonds::Vector{Vector{Tuple{Int,Float32}}},
     ref_dst = norm(mat*[1, 1, 1])
     for i in 1:n, (k, maxdist) in bonds[i]
         k < i && continue
-        @toggleassert k != i
         iszero(maxdist) && continue
         offset::Vector{SVector{3, Int}} = []
         old_dst = ref_dst
@@ -367,6 +366,7 @@ function edges_from_bonds(bonds::Vector{Vector{Tuple{Int,Float32}}},
             end
         end
         for ofs in offset
+            k == i && iszero(ofs) && continue
             push!(edges, (i, k, ofs))
         end
     end

@@ -185,6 +185,7 @@ end
     @test string(determine_topology(joinpath(cifs, "Clathrate_hydrate.cif"); Hbonds=true)) == "ict"
     @test string(determine_topology(joinpath(cifs, "Clathrate_hydrate.cif"); Hbonds=true, structure=StructureType.Guess)) == "AllNodes, SingleNodes: ict"
     @test string(determine_topology(joinpath(cifs, "Lithosite.cif"); structure=StructureType.Zeolite, ignore_atoms=(:K,))) == "-LIT"
+    @test string(determine_topology(joinpath(cifs, "Po.cif"); bonding=Bonding.Input)) == "pcu"
 end
 
 @testset "Archive" begin

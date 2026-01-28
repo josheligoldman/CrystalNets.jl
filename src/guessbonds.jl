@@ -64,6 +64,7 @@ function guess_bonds(pos, types, mat, options)
     cutoff_sq = (3*(options.cutoff_coeff^3.1) * max(maximum(radii), 0.833))^2
     cutoff2 = 13*options.cutoff_coeff/15
     pd2 = PeriodicDistance2(mat)
+    minnorm2 = 4*min(pd2(SA[0.5, 0, 0]), pd2(SA[0, 0.5, 0]), pd2(SA[0, 0, 0.5]))
     for i in 1:n
         radius_i = radii[i]
         iszero(radius_i) && continue
@@ -75,7 +76,7 @@ function guess_bonds(pos, types, mat, options)
                          (options.ignore_homometallic_bonds && ismetal[atomic_numbers[typi]])
         acceptonlyO = options.structure === StructureType.Zeolite && typi !== :O
         acceptallbutO = options.structure === StructureType.Zeolite && typi === :O
-        for j in (i+1):n
+        for j in i:n
             typj = types[j]
             skiphomoatomic && typj === typi && continue
             acceptonlyO && typj !== :O && continue
@@ -85,11 +86,11 @@ function guess_bonds(pos, types, mat, options)
             radius_j = radii[j]
             iszero(radius_j) && continue
             posj = pos[j]
-            d2 = pd2(posi, posj)
+            d2 = i == j ? minnorm2 : pd2(posi, posj)
             maxdist = cutoff2*(radius_i + radius_j)
             if d2 < cutoff_sq && 0.5^2 < d2 < maxdist^2
                 push!(bonds[i], (j, maxdist))
-                push!(bonds[j], (i, maxdist))
+                i == j || push!(bonds[j], (i, maxdist))
             end
         end
     end

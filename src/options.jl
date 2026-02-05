@@ -474,6 +474,7 @@ struct Options
     error::String
     throw_error::Bool
     track_mapping::Union{Nothing,Vector{Int}}
+    track_offsets::Union{Nothing, Vector{SVector{3, Int}}}
     keep_single_track::Bool
 
     function Options(; name="unnamed",
@@ -521,6 +522,7 @@ struct Options
                        error="",
                        throw_error=false,
                        track_mapping=nothing,
+                       track_offsets=nothing,
                        keep_single_track=true
                     )
 
@@ -607,6 +609,7 @@ struct Options
             error,
             throw_error,
             _track_mapping,
+            track_offsets,
             keep_single_track,
         )
     end

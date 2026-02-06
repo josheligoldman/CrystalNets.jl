@@ -1,3 +1,11 @@
+mutable struct TilingData{T}
+    lattice::SMatrix{3,3,T,9}
+    atom_coords::Vector{SVector{3,T}}
+    atom_bonds::Vector{Tuple{Int,Int,SVector{3,Int}}}
+    atom_to_cluster_offsets::Vector{SVector{3,Int}}
+end
+TilingData(::Type{T}) where T = TilingData{T}(SMatrix{3,3,T,9}(LinearAlgebra.I), SVector{3,T}[], Tuple{Int,Int,SVector{3,Int}}[], SVector{3,Int}[],)
+
 ## Computation options
 
 """
@@ -474,7 +482,7 @@ struct Options
     error::String
     throw_error::Bool
     track_mapping::Union{Nothing,Vector{Int}}
-    track_offsets::Union{Nothing, Vector{SVector{3, Int}}}
+    tiling_data::Union{Nothing,TilingData{Float64}}
     keep_single_track::Bool
 
     function Options(; name="unnamed",
@@ -522,8 +530,8 @@ struct Options
                        error="",
                        throw_error=false,
                        track_mapping=nothing,
-                       track_offsets=nothing,
-                       keep_single_track=true
+                       tiling_data=nothing,
+                       keep_single_track=true,
                     )
 
         if throw_error && !isempty(error)
@@ -609,7 +617,7 @@ struct Options
             error,
             throw_error,
             _track_mapping,
-            track_offsets,
+            tiling_data,
             keep_single_track,
         )
     end

@@ -34,7 +34,8 @@ export CrystalNet,
        one_topology,
        StructureType,
        Bonding,
-       Clustering
+       Clustering, 
+       TilingData
 
 using LinearAlgebra: det, dot, norm, rank, cross
 import LinearAlgebra

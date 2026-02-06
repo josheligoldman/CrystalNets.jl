@@ -1389,6 +1389,13 @@ function order_atomtype(sym)
 end
 
 function _collapse_clusters(crystal::Crystal{Nothing}, clusters::Clusters, onlynv::Bool, bypassexport::Bool)
+    if crystal.options.tiling_data !== nothing
+        crystal.options.tiling_data.lattice = crystal.pge.cell.mat
+        crystal.options.tiling_data.atom_coords = crystal.pge.pos
+        crystal.options.tiling_data.atom_bonds = [(e.src, e.dst.v, e.dst.ofs) for e in edges(crystal.pge.g)]
+        crystal.options.tiling_data.atom_to_cluster_offsets = clusters.offsets
+    end
+
     structure = crystal.options.structure
     clustering = only(crystal.options.clusterings)
     if clustering == Clustering.EachVertex || structure == StructureType.Zeolite
@@ -1439,6 +1446,11 @@ function _collapse_clusters(crystal::Crystal{Nothing}, clusters::Clusters, onlyn
                 @warn "Could not export attributions: the resulting structure is empty."
             end
         end
+        if crystal.options.tiling_data !== nothing
+            empty!(crystal.options.tiling_data.atom_coords)
+            empty!(crystal.options.tiling_data.atom_bonds)
+            empty!(crystal.options.tiling_data.atom_to_cluster_offsets)
+        end
         return Crystal{Nothing}(PeriodicGraphEmbedding{3,Float64}(crystal.pge.cell), Symbol[],
                                  Options(crystal.options; _pos=SVector{3,Float64}[]))
     end
@@ -1448,9 +1460,9 @@ function _collapse_clusters(crystal::Crystal{Nothing}, clusters::Clusters, onlyn
     n = length(sbus)
     pos = Vector{SVector{3,Float64}}(undef, n)
     types = Vector{Symbol}(undef, n)
-    onlynv && return Crystal{Nothing}(crystal.pge.cell, types, pos, graph, crystal.options)
+    onlynv && return Crystal{Nothing}(crystal.pge.cell, types, pos, graph, crystal.options) # TODO
     for (i, sbu) in enumerate(sbus)
-        pos[i] = mean(crystal.pge.pos[x.v] .+ x.ofs for x in sbu)
+        pos[i] = mean(crystal.pge.pos[x.v] .+ x.ofs for x in sbu) # Computing the position of the cluster as the mean of the positions of its atoms
         name = sort!([crystal.types[x.v] for x in sbu])
         push!(name, Symbol(""))
         newname = Tuple{Int,String}[]

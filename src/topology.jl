@@ -707,8 +707,10 @@ function topological_key(net::CrystalNet{D,T}, (equiv_net, collisions)) where {D
         end
     end
 
-    finalbasis = Int.(minimal_basis * newbasis) # (a, b, x) -> (a', b', x') in the canonical form, then x = finalbasis * x'
-    net.options.tiling_data.finalbasis = finalbasis
+    if net.options.tiling_data !== nothing
+        finalbasis = Int.(minimal_basis * newbasis) # (a, b, x) -> (a', b', x') in the canonical form, then x = finalbasis * x'
+        net.options.tiling_data.finalbasis = finalbasis
+    end
     # return Int.(finalbasis), minimal_vmap, graph
     return graph
 end

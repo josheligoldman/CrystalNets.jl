@@ -1,17 +1,12 @@
-mutable struct TilingData{T}
-    lattice::SMatrix{3,3,T,9}
-    finalbasis::SMatrix{3,3,Int,9} # (a, b, x) -> (a', b', x') in the canonical form, then x = finalbasis * x'. finalbasis is the matrix representation of the final basis in the original basis. 
-    # TODO: maybe just save the entire PeriodicGraphEmbedding instead of just the lattice and the atom positions and bonds?
-    atom_coords::Vector{SVector{3,T}}
-    atom_bonds::Vector{Tuple{Int,Int,SVector{3,Int}}}
-    atom_to_cluster_offsets::Vector{SVector{3,Int}}
+mutable struct TilingData
+    crystal_pge::Union{Nothing, PeriodicGraphEmbedding{3, Float64}}
+    atom_to_cluster_offsets::Union{Nothing, Vector{SVector{3,Int}}}
+    finalbasis::Union{Nothing, SMatrix{3,3,Int,9}} # (a, b, x) -> (a', b', x') in the canonical form, then x = finalbasis * x'. finalbasis is the matrix representation of the final basis in the original basis. 
 end
-TilingData(::Type{T}) where T = TilingData{T}(
-    SMatrix{3,3,T,9}(LinearAlgebra.I),
-    SMatrix{3,3,Int,9}(LinearAlgebra.I),
-    SVector{3,T}[],
-    Tuple{Int,Int,SVector{3,Int}}[],
-    SVector{3,Int}[],
+TilingData() = TilingData(
+    nothing,
+    nothing,
+    nothing,
 )
 
 ## Computation options
@@ -490,7 +485,7 @@ struct Options
     error::String
     throw_error::Bool
     track_mapping::Union{Nothing,Vector{Int}}
-    tiling_data::Union{Nothing,TilingData{Float64}}
+    tiling_data::Union{Nothing,TilingData}
     keep_single_track::Bool
 
     function Options(; name="unnamed",

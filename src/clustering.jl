@@ -1390,9 +1390,7 @@ end
 
 function _collapse_clusters(crystal::Crystal{Nothing}, clusters::Clusters, onlynv::Bool, bypassexport::Bool)
     if crystal.options.tiling_data !== nothing
-        crystal.options.tiling_data.lattice = crystal.pge.cell.mat
-        crystal.options.tiling_data.atom_coords = crystal.pge.pos
-        crystal.options.tiling_data.atom_bonds = [(e.src, e.dst.v, e.dst.ofs) for e in edges(crystal.pge.g)]
+        crystal.options.tiling_data.crystal_pge = crystal.pge
         crystal.options.tiling_data.atom_to_cluster_offsets = clusters.offsets
     end
 
@@ -1463,6 +1461,9 @@ function _collapse_clusters(crystal::Crystal{Nothing}, clusters::Clusters, onlyn
     onlynv && return Crystal{Nothing}(crystal.pge.cell, types, pos, graph, crystal.options) # TODO
     for (i, sbu) in enumerate(sbus)
         pos[i] = mean(crystal.pge.pos[x.v] .+ x.ofs for x in sbu) # Computing the position of the cluster as the mean of the positions of its atoms
+        if !all(x -> 0 <= x < 1, pos[i])
+            @warn "The position of cluster $i is not in the unit cell: $(pos[i])"
+        end
         name = sort!([crystal.types[x.v] for x in sbu])
         push!(name, Symbol(""))
         newname = Tuple{Int,String}[]

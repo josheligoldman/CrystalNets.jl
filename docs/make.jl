@@ -15,8 +15,7 @@ using CrystalNets
 DocMeta.setdocmeta!(CrystalNets, :DocTestSetup, quote
     using CrystalNets
     import CrystalNets: Options, Clustering, Bonding, StructureType
-    const PeriodicGraphs = CrystalNets.PeriodicGraphs
-    using .PeriodicGraphs
+    using PeriodicGraphs
 
     CrystalNets.toggle_export(false)
     CrystalNets.toggle_warning(false)

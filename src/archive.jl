@@ -10,7 +10,7 @@ const arc_location = artifact"archives"
 The archive used to recognize known topologies.
 
 You probably don't need to access it directly: rely on [`recognize_topology`](@ref) to read
-and the various archive functions like [`add_to_current_archive!`](@ref) to write.
+and the various archive functions like `CrystalNets.add_to_current_archive!` to write.
 """
 const CRYSTALNETS_ARCHIVE = if isdir(arc_location) && !isempty(readdir(arc_location))
     flag, parsed = parse_arcs(arc_location)
@@ -58,12 +58,6 @@ const REVERSE_CRYSTALNETS_ARCHIVE = Dict{String,String}(id => key for (key, id) 
 
 export REVERSE_CRYSTALNETS_ARCHIVE
 
-export clean_default_archive!,
-       set_default_archive!,
-       empty_default_archive!,
-       change_current_archive!,
-       refresh_current_archive!,
-       add_to_current_archive!
 
 # export make_archive
 
@@ -322,7 +316,7 @@ it to `destination`, if specified. Each file of the directory should correspond
 to a unique topology: if a topology is encountered multiple times, it will be assigned
 the name of the latest file that bore it.
 
-The archive can then be used with [`change_current_archive!(destination; validate=false)`](@ref change_current_archive!)
+The archive can then be used with `change_current_archive!(destination; validate=false)`
 for instance.
 """
 function make_archive(path, destination, verbose=false)

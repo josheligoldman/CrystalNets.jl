@@ -35,9 +35,8 @@ function _reset_archive!(safeARCHIVE, safeREVERSE)
 end
 
 function extract1(x)
-    topo, nfold = only(x)
-    @test nfold == 1
-    topo
+    @test length(x) == 1
+    first(x)
 end
 
 function count_valid_tests(n, failures)
@@ -59,16 +58,18 @@ import CrystalNets.Clustering: SingleNodes, AllNodes, Standard, PE, PEM
     @testset "Dataset analysis" begin
         @test length(mofdataset) == 16
 
-        afixew, afixew_nfold = only(mofdataset["AFIXEW_ASR.cif"])
-        @test afixew_nfold == 4
+        afixews = mofdataset["AFIXEW_ASR.cif"]
+        @test length(afixews) == 4
+        afixew = first(afixews)
+        @test all(==(afixew), afixews)
         @test afixew[AllNodes] == afixew[SingleNodes] == parse(TopologicalGenome, "bex")
 
         hkust1 = extract1(mofdataset["HKUST-1.cif"])
         @test hkust1[SingleNodes] == hkust1[AllNodes] == hkust1[Standard]
         @test hkust1[SingleNodes].name == "tbo"
 
-        jxust1, nfoldjxust1 = only(mofdataset["JXUST-1.cif"])
-        @test nfoldjxust1 == 2
+        jxust1, jxust2 = mofdataset["JXUST-1.cif"]
+        @test jxust1 == jxust2
         @test jxust1[SingleNodes] == jxust1[AllNodes]
         @test PeriodicGraph(jxust1[SingleNodes]) == PeriodicGraph(REVERSE_CRYSTALNETS_ARCHIVE["pcu"])
 
@@ -95,8 +96,7 @@ import CrystalNets.Clustering: SingleNodes, AllNodes, Standard, PE, PEM
 
         topologies_mof14 = mofdataset["MOF-14.cif"]
         @test topologies_mof14[1] == topologies_mof14[2]
-        mof14, nfoldmof14 = topologies_mof14[1]
-        @test nfoldmof14 == 1
+        mof14 = topologies_mof14[1]
         @test mof14[SingleNodes].name == mof14[AllNodes].name == mof14[Standard].name == "pto"
         @test mof14[PE] == parse(TopologicalGenome, "sqc11259")
 
@@ -123,9 +123,8 @@ import CrystalNets.Clustering: SingleNodes, AllNodes, Standard, PE, PEM
         webzek = mofdataset["WEBZEK.cif"]
         @test length(webzek) == 2
         webzekA, webzekB = webzek
-        @test webzekA[2] == webzekB[2] == 1
-        @test webzekA[1][:AllNodes] == webzekA[1][Clustering.SingleNodes] == parse(TopologicalGenome, "bcu")
-        @test string(webzekB[1]) == "AllNodes, SingleNodes, Standard, PEM: dia\nPE: dia-a"
+        @test webzekA[:AllNodes] == webzekA[Clustering.SingleNodes] == parse(TopologicalGenome, "bcu")
+        @test string(webzekB) == "AllNodes, SingleNodes, Standard, PEM: dia\nPE: dia-a"
     end
 
     CNets.toggle_warning(false)
@@ -177,7 +176,7 @@ import CrystalNets.Clustering: SingleNodes, AllNodes, Standard, PE, PEM
     @test_broken determine_topology(joinpath(cifs, "c8ce00653a2.cif"); kwargs..., clusterings=[Clustering.PE], bonding=Bonding.Guess)
 
     bexvad = determine_topology(joinpath(cifs, "BEXVAD.cif"); kwargs..., clusterings=[Clustering.PEM], bonding=Bonding.Guess)
-    @test_broken bexvad[1][1] == bexvad[2][1]
+    @test_broken bexvad[1] == bexvad[2]
 end
 
 @testset "Other kinds of structures" begin

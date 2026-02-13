@@ -65,12 +65,12 @@ In both known and unknown cases, the result is an [`InterpenetratedTopologyResul
 
 #### Interpenetrating substructures
 
-If the file contains multiple interpenetrating substructures, each substructure and its catenation multiplicity can be extracted from the [`InterpenetratedTopologyResult`](@ref).
+If the file contains multiple substructures, each substructure can be extracted from the [`InterpenetratedTopologyResult`](@ref).
 
 For example:
 
 ```julia
-julia> x = determine_topology("/path/to/intertwinned/structures.cif")
+julia> determine_topology("/path/to/intertwinned/structures.cif")
 2 interpenetrated substructures:
 ⋅ Subnet 1 → pcu
 ⋅ Subnet 2 → srs

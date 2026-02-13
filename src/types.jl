@@ -747,10 +747,10 @@ end
 
 # separate the different connex composants of the crystal
 function separate_components(c::Crystal{T}) where T
-    splits = split_catenation(c.pge)
+    splits = split_connected_components(c.pge)
     numdim0 = 0
     num = 0
-    ret = ntuple(_ -> Tuple{Vector{Crystal{T}},Vector{Int}}[], Val(3))
+    ret = ntuple(_ -> Tuple{Crystal{T},Vector{PeriodicVertex3D}}[], Val(3))
     for (subpge, pvmaps, mat, dim) in splits
         if dim == 0
             numdim0 += 1
@@ -758,8 +758,7 @@ function separate_components(c::Crystal{T}) where T
             num += 1
             num > 1 && c.options.track_mapping isa Vector{Int} && c.options.keep_single_track && throw(ArgumentError("Cannot keep a single mapping track for multiple sub-nets. Please use keep_single_track=true only on single components with a single clustering."))
             newc = Crystal(c, rev_permute_mapping!(c.options, first.(first(pvmaps)), length(c.types)))
-            crystals = [skew_crystal(newc, pvmap, subpge, mat) for pvmap in pvmaps]
-            push!(ret[dim], (crystals, first.(first(pvmaps))))
+            append!(ret[dim], (skew_crystal(newc, pvmap, subpge, mat), pvmap) for pvmap in pvmaps)
         end
     end
     @ifwarn if numdim0 > 0
@@ -849,13 +848,13 @@ end
 Grouping of the connected components of a structure according to their dimensionality.
 """
 struct UnderlyingNets
-    D1::Vector{Tuple{Vector{CrystalNet1D},Int,Vector{Int}}}
-    D2::Vector{Tuple{Vector{CrystalNet2D},Int,Vector{Int}}}
-    D3::Vector{Tuple{Vector{CrystalNet3D},Int,Vector{Int}}}
+    D1::Vector{Tuple{Vector{CrystalNet1D},Vector{PeriodicVertex3D}}}
+    D2::Vector{Tuple{Vector{CrystalNet2D},Vector{PeriodicVertex3D}}}
+    D3::Vector{Tuple{Vector{CrystalNet3D},Vector{PeriodicVertex3D}}}
 end
-UnderlyingNets() = UnderlyingNets(Tuple{Vector{CrystalNet1D},Int,Vector{Int}}[],
-                                  Tuple{Vector{CrystalNet2D},Int,Vector{Int}}[],
-                                  Tuple{Vector{CrystalNet1D},Int,Vector{Int}}[],
+UnderlyingNets() = UnderlyingNets(Tuple{Vector{CrystalNet1D},Vector{PeriodicVertex3D}}[],
+                                  Tuple{Vector{CrystalNet2D},Vector{PeriodicVertex3D}}[],
+                                  Tuple{Vector{CrystalNet1D},Vector{PeriodicVertex3D}}[],
                                  )
 
 function _repeatgroups!(ex, i)
@@ -896,26 +895,19 @@ function UnderlyingNets(c::Crystal)
     groups = UnderlyingNets()
     components = separate_components(c)
     if all(isempty, components)
-        vmap = collect(1:length(c.types))
+        vmap = PeriodicVertex3D.(1:length(c.types))
         nets = [CrystalNet3D(c.pge.cell, Options(c.options; clusterings=[clust])) for clust in c.options.clusterings]
-        push!(groups.D3, (nets, 1, vmap))
+        push!(groups.D3, (nets, vmap))
         return groups
     end
     i = 0
     @repeatgroups begin
-        for (comps, vmap) in components[D]
+        for (comp, pvmap) in components[D]
             i += 1
-            has_export = !(isempty(c.options.export_trimmed) &
-                           isempty(c.options.export_subnets) &
-                           isempty(c.options.export_attributions) &
-                           isempty(c.options.export_clusters))
-            for (j, comp) in enumerate(has_export ? comps : (first(comps),))
-                nameext = has_export && length(comps) > 1 ? "_fold$j" : ""
-                component = Crystal(comp; name=string(comp.options.name, '_', i, nameext))
-                crystals = collapse_clusters(component)
-                nets = collect_nets(crystals, Val(D))
-                j == 1 && push!(groups, (nets, length(comps), vmap))
-            end
+            component = Crystal(comp; name=string(comp.options.name, '_', i))
+            crystals = collapse_clusters(component)
+            nets = collect_nets(crystals, Val(D))
+            push!(groups, (nets, pvmap))
         end
     end
     return groups
@@ -982,11 +974,12 @@ const SmallPseudoGraph = Union{PseudoGraph{1},PseudoGraph{2},PseudoGraph{3}}
 function UnderlyingNets(g::SmallPseudoGraph, options::Options)
     graph = g isa PeriodicGraph ? g : PeriodicGraph(g)
     groups = UnderlyingNets()
-    splits = split_catenation(graph)
+    splits = split_connected_components(graph)
     cell = Cell()
     num = 0
     numdim0 = 0
     for (subg, pvmaps, _, D) in splits
+        pvmaps3 = [[PeriodicVertex3D(x.v, SVector{3,Int}(ntuple(i -> i ≤ D ? x.ofs[i] : 0, Val(3)))) for x in pvmap] for pvmap in pvmaps]
         if D == 0
             numdim0 += 1
         else
@@ -994,10 +987,9 @@ function UnderlyingNets(g::SmallPseudoGraph, options::Options)
             types = fill(Symbol(""), n)
             num += 1
             num > 1 && options.track_mapping isa Vector{Int} && options.keep_single_track && throw(ArgumentError("Cannot keep a single mapping track for multiple sub-nets. Please use keep_single_track=true only on single components with a single clustering."))
-            vmap = first.(first(pvmaps))
-            opts = rev_permute_mapping!(options, vmap, n)
+            opts = rev_permute_mapping!(options, first.(first(pvmaps3)), n)
             gD = D == 1 ? groups.D1 : D == 2 ? groups.D2 : groups.D3
-            push!(gD, (CrystalNet{D}[CrystalNet{D}(cell, types, subg, opts, false)], length(pvmaps), vmap))
+            append!(gD, (CrystalNet{D}[CrystalNet{D}(cell, types, subg, opts, false)], pvmap) for pvmap in pvmaps3)
         end
     end
     @ifwarn if numdim0 > 0
@@ -1158,7 +1150,7 @@ of a `TopologyResult` can be parsed back to a `TopologyResult`:
 ```jldoctest
 julia> mof5 = joinpath(dirname(dirname(pathof(CrystalNets))), "test", "cif", "MOF-5.cif");
 
-julia> topologies = only(determine_topology(mof5, structure=StructureType.MOF, clusterings=[Clustering.Auto, Clustering.Standard, Clustering.PE]))[1]
+julia> topologies = only(determine_topology(mof5, structure=StructureType.MOF, clusterings=[Clustering.Auto, Clustering.Standard, Clustering.PE]))
 AllNodes, SingleNodes: pcu
 Standard: xbh
 PE: cab
@@ -1385,50 +1377,13 @@ end
 
 
 """
-    InterpenetratedTopologyResult <: AbstractVector{Tuple{TopologyResult,Int}}
+    InterpenetratedTopologyResult <: AbstractVector{TopologyResult}
 
 The result of a topology computation on a structure containing possibly several
-interpenetrated substructures.
+entangled substructures.
 
-An `InterpenetratedTopologyResult` can be seen as a list of `(topology, n)` pair where
-* `topology` is the [`TopologyResult`](@ref) corresponding to the substructures.
-* `n` is an integer such that the substructure is composed of an `n`-fold catenated net.
-
-The entire structure can thus be decomposed in a series of substructures, each of them
-possibly decomposed into several catenated nets.
-
-!!! info "Vocabulary"
-    In this context, *interpenetration* and *catenation* have slightly different meanings:
-    - two (or more) substructures are *interpenetrated* if both are present in the unit cell, and
-      are composed of vertices that have disjoint numbers. They may or may not all have the
-      same topology since they are disjoint and independent subgraphs. For example:
-      ```jldoctest
-      julia> topological_genome(PeriodicGraph("2   1 1  0 1   2 2  0 1   2 2  1 0"))
-      2 interpenetrated substructures:
-      ⋅ Subnet 1 → UNKNOWN 1 1 1 1
-      ⋅ Subnet 2 → sql
-      ```
-    - a net is `n`-fold *catenated* if the unit cell of a single connected component of the
-      net is `n` times larger than the unit cell of the overall net. In that case, the net
-      is actually made of `n` interpenetrating connected components, which all have the
-      same topology. For example:
-      ```jldoctest
-      julia> topological_genome(PeriodicGraph("3   1 1  2 0 0   1 1  0 1 0   1 1  0 0 1"))
-      (2-fold) pcu
-      ```
-    Both may occur inside a single structure, for example:
-    ```jldoctest
-    julia> topological_genome(PeriodicGraph("2   1 1  0 2   2 2  0 1   2 2  1 0"))
-    2 interpenetrated substructures:
-    ⋅ Subnet 1 → (2-fold) UNKNOWN 1 1 1 1
-    ⋅ Subnet 2 → sql
-    ```
-    Note that catenation is a particular case of interpenetration: an `n`-fold catenated
-    net repeated into a supercell `n` times larger becomes `n` interpenetrated nets.
-
-    !!! tip
-        See also [`total_interpenetration`](@ref) to abstract away the difference between
-        interpenetration and catenation.
+An `InterpenetratedTopologyResult` can be seen as a list of topologies where each element is
+the [`TopologyResult`](@ref) corresponding to a substructure.
 
 # Example
 ```jldoctest
@@ -1445,16 +1400,7 @@ InterpenetratedTopologyResult
 julia> parse(InterpenetratedTopologyResult, repr(topologies)) == topologies
 true
 
-julia> topologies[2]
-(AllNodes, SingleNodes, Standard: pto
-PE: sqc11259, 1)
-
-julia> topology, n = topologies[2]; # second subnet
-
-julia> n # catenation multiplicity
-1
-
-julia> topology
+julia> topology = topologies[2] # second subnet
 AllNodes, SingleNodes, Standard: pto
 PE: sqc11259
 
@@ -1462,19 +1408,19 @@ julia> typeof(topology)
 TopologyResult
 ```
 """
-struct InterpenetratedTopologyResult <: AbstractVector{Tuple{TopologyResult,Int}}
-    data::Vector{Tuple{TopologyResult,Int,Vector{Int}}}
+struct InterpenetratedTopologyResult <: AbstractVector{TopologyResult}
+    data::Vector{Tuple{TopologyResult,Vector{PeriodicVertex3D}}}
 end
 function InterpenetratedTopologyResult(b::Bool)
     if b # 0-dimensional
-        InterpenetratedTopologyResult([(TopologyResult(),0,Int[])])
+        InterpenetratedTopologyResult([(TopologyResult(),PeriodicVertex3D[])])
     else # no topology computation
-        InterpenetratedTopologyResult(Tuple{TopologyResult,Int,Vector{Int}}[])
+        InterpenetratedTopologyResult(Tuple{TopologyResult,Vector{PeriodicVertex3D}}[])
     end
 end
-InterpenetratedTopologyResult(e::AbstractString) = InterpenetratedTopologyResult([(TopologyResult(string(e)), 1, Int[])])
+InterpenetratedTopologyResult(e::AbstractString) = InterpenetratedTopologyResult([(TopologyResult(string(e)), PeriodicVertex3D[])])
 Base.size(x::InterpenetratedTopologyResult) = (length(x.data),)
-Base.getindex(x::InterpenetratedTopologyResult, i) = (y = x.data[i]; (y[1], y[2]))
+Base.getindex(x::InterpenetratedTopologyResult, i) = first(x.data[i])
 
 haserror(x::InterpenetratedTopologyResult) = any(haserror∘first, x.data)
 
@@ -1483,37 +1429,18 @@ function Base.show(io::IO, ::MIME"text/plain", x::InterpenetratedTopologyResult)
     if compact
         print(io, length(x), " interpenetrated substructures:")
     end
-    for (i, (topology, nfold)) in enumerate(x)
-        if nfold == 0
-            print(io, "0-dimensional")
-            continue
-        end
+    for (i, topology) in enumerate(x)
+        # if nfold == 0
+        #     print(io, "0-dimensional")
+        #     continue
+        # end
         if compact
             print(io, "\n⋅ Subnet ", i, " → ")
         end
-        hasnfold = nfold > 1
-        if hasnfold
-            @static if VERSION < v"1.10-"
-                printstyled(io, '(', nfold, "-fold) ", color=:yellow)
-            else
-                printstyled(io, '(', nfold, "-fold) ", italic=true)
-            end
-        end
-        print(IOContext(io, :compact=>(compact|hasnfold)), topology)
+        print(IOContext(io, :compact=>compact), topology)
     end
 end
 Base.show(io::IO, x::InterpenetratedTopologyResult) = show(io, MIME("text/plain"), x)
-
-function parse_nfold_topologyresult(x::AbstractString)
-    nfold = 1
-    num_digits = -8
-    if x[1] == '('
-        nfold = parse(Int, first(split(@view(x[2:end]), !isnumeric; limit=2)))
-        num_digits = ndigits(nfold)
-        @assert @view(x[(2+num_digits):(8+num_digits)]) == "-fold) "
-    end
-    parse(TopologyResult, @view(x[(9+num_digits):end])), nfold
-end
 
 function Base.parse(::Type{InterpenetratedTopologyResult}, x::AbstractString)
     s = split(x; limit=4)
@@ -1521,19 +1448,19 @@ function Base.parse(::Type{InterpenetratedTopologyResult}, x::AbstractString)
     isempty(s) && return InterpenetratedTopologyResult(false)
     if length(s) > 3 && s[2] == "interpenetrated" && s[3] == "substructures:"
         lines = split(s[4], '\n')
-        data = Vector{Tuple{TopologyResult,Int,Vector{Int}}}(undef, length(lines))
+        data = Vector{Tuple{TopologyResult,Vector{PeriodicVertex3D}}}(undef, length(lines))
         for l in lines
             @assert @view(l[1:11]) == "⋅ Subnet "
             splits = split(@view(l[11:end]); limit=3)
             i = parse(Int, splits[1])
             @assert splits[2] == "→"
-            topo, nfold = parse_nfold_topologyresult(splits[3])
-            data[i] = (topo, nfold, Int[])
+            topo = parse(TopologyResult, splits[3])
+            data[i] = (topo, PeriodicVertex3D[])
         end
         return InterpenetratedTopologyResult(data)
     end
-    topo1, nfold1 = parse_nfold_topologyresult(x)
-    return InterpenetratedTopologyResult([(topo1, nfold1, Int[])])
+    topo1 = parse(TopologyResult, x)
+    return InterpenetratedTopologyResult([(topo1, PeriodicVertex3D[])])
 end
 
 """
@@ -1549,12 +1476,11 @@ If the clustering is not found in one of the interpenetrated topologies, return 
 function one_topology(itr::InterpenetratedTopologyResult, clustering::Union{Nothing,_Clustering}=nothing)
     result = nothing
     for topo in itr
-        top = topo[1]
         newresult::Union{Missing,TopologicalGenome} = if clustering isa Nothing
-            length(top) == 1 || return nothing
-            only(values(top))
+            length(topo) == 1 || return nothing
+            only(values(topo))
         else
-            get(top, clustering, missing)
+            get(topo, clustering, missing)
         end
         if result !== nothing
             isequal(result, newresult) || return nothing
@@ -1569,7 +1495,7 @@ end
     total_interpenetration(itr::InterpenetratedTopologyResult, clustering::Union{Nothing,_Clustering}=nothing)
 
 Return a `Dict{TopologicalGenome,Int}` that links each topology to the number of
-interpenetrated nets having that topology (catenation included) for the given `clustering`.
+interpenetrated nets having that topology for the given `clustering`.
 If `clustering` is `nothing`, all possible topologies will be studied.
 
 ## Example
@@ -1580,13 +1506,14 @@ See [`InterpenetratedTopologyResult`](@ref) for reference on these examples.
 julia> g = PeriodicGraph("2   1 1  0 2   2 2  0 1   2 2  1 0");
 
 julia> topologies1 = topological_genome(g)
-2 interpenetrated substructures:
-⋅ Subnet 1 → (2-fold) UNKNOWN 1 1 1 1
-⋅ Subnet 2 → sql
+3 interpenetrated substructures:
+⋅ Subnet 1 → 1-rod (1 1 1 1)
+⋅ Subnet 2 → 1-rod (1 1 1 1)
+⋅ Subnet 3 → sql
 
 julia> CrystalNets.total_interpenetration(topologies1)
 Dict{TopologicalGenome, Int64} with 2 entries:
-  UNKNOWN 1 1 1 1 => 2
+  1-rod (1 1 1 1) => 2
   sql             => 1
 
 julia> mof14 = joinpath(dirname(dirname(pathof(CrystalNets))), "test", "cif", "MOFs", "MOF-14.cif");
@@ -1608,18 +1535,18 @@ Dict{TopologicalGenome, Int64} with 2 entries:
 """
 function total_interpenetration(itr::InterpenetratedTopologyResult, clustering::Union{Nothing,_Clustering}=nothing)
     result = Dict{TopologicalGenome,Int}()
-    for (top, n) in itr
+    for topo in itr
         itr = if clustering isa Nothing
-            values(top)
+            values(topo)
         else
-            val = get(top, clustering, missing)
+            val = get(topo, clustering, missing)
             val isa Missing && return missing
             (val,)
         end
         for topology in itr
             if isempty(topology.error)
                 known = get(result, topology, 0)
-                result[topology] = known + n
+                result[topology] = known + 1
             end
         end
     end

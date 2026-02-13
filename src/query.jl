@@ -143,8 +143,8 @@ Return a [`InterpenetratedTopologyResult`](@ref)
     Options must be passed directly within the subnets.
 """
 function topological_genome(group::UnderlyingNets)
-    ret = Tuple{TopologyResult,Int,Vector{Int}}[]
-    @loop_group for (net, nfold, id) in group
+    ret = Tuple{TopologyResult,Vector{PeriodicVertex3D}}[]
+    @loop_group for (net, id) in group
         encountered = Dict{PeriodicGraph,_Clustering}()
         subret = Vector{Tuple{_Clustering,Union{_Clustering,TopologicalGenome}}}(undef, length(net))
         for (j, subnet) in enumerate(net)
@@ -152,7 +152,7 @@ function topological_genome(group::UnderlyingNets)
             refclust = get!(encountered, subnet.pge.g, clust)
             subret[j] = (clust, refclust == clust ? topological_genome(subnet) : refclust)
         end
-        push!(ret, (TopologyResult(subret), nfold, id))
+        push!(ret, (TopologyResult(subret), id))
     end
     return InterpenetratedTopologyResult(ret)
 end
@@ -200,9 +200,8 @@ macro ifvalidgenomereturn(opts, msg, skipcrystal=false)
     $crystaldef
     group = UnderlyingNets(crystal)
     dim, subnets = isempty(group.D3) ? isempty(group.D2) ? (1, group.D1) : (2, group.D2) : (3, group.D3)
-    for (_, nets) in subnets
+    for (nets, _) in subnets
         for net in nets
-            net isa CrystalNet || continue
             sig = get(encountered_graphs, net.pge.g, net.pge.g)
             if haskey(encountered_genomes, net.pge.g)
                 encountered_genomes[sig] += 1
@@ -328,8 +327,7 @@ guess_topology(path; kwargs...) = guess_topology(path, Options(structure=Structu
 Given a path to a directory containing structure input files, compute the
 topology of each structure within the directory.
 Return a dictionary linking each file name to the result.
-The result is a [`InterpenetratedTopologyResult`](@ref), containing the topological genome,
-the name if known and the stability of the net.
+The result is a [`InterpenetratedTopologyResult`](@ref), containing the topological genomes.
 In case of error, the exception is reported.
 
 Warnings will be toggled off (unless `force_warn` is set) and it is stongly recommended
@@ -400,10 +398,10 @@ function determine_topology_dataset(path, save, autoclean, showprogress, options
             InterpenetratedTopologyResult(string(e))
         end
         if isempty(genomes)
-            push!(genomes.data, (TopologyResult(""), 1, Int[]))
+            push!(genomes.data, (TopologyResult(""), PeriodicVertex3D[]))
         end
-        for (j, (genome, nfold)) in enumerate(genomes)
-            newname = string(file, ';', j, ';', nfold)
+        for (j, genome) in enumerate(genomes)
+            newname = string(file, ';', j)
             open(joinpath(resultdir, string(threadid())), "a") do results
                 io = IOContext(results, :compact => true)
                 println(io, newname, ';', genome)
@@ -421,8 +419,7 @@ function determine_topology_dataset(path, save, autoclean, showprogress, options
             splits = split(l, ';', limit=4)
             data = get!(result, splits[1], InterpenetratedTopologyResult(false)).data
             _genome = pop!(splits)
-            _nfold = pop!(splits)
-            push!(data, (parse(TopologyResult, _genome), parse(Int, _nfold), Int[]))
+            push!(data, (parse(TopologyResult, _genome), PeriodicVertex3D[]))
         end
     end
     if save
@@ -629,13 +626,12 @@ function export_report(path, results::Dict; keepext=true, fullunknown=false, clu
         path = string(path, ".tsv")
     end
     open(path, "w") do io
-        print(io, "input\tcatenation\t")
+        print(io, "input\t")
         join(io, clusterings, '\t')
         println(io)
         for name in ks
             topologies = results[name]
             print(io, keepext ? splitext(name)[1] : name, '\t')
-            print(io, sum(last, topologies), '\t')
             for (i, clust) in enumerate(clusterings)
                 topo = CrystalNets.one_topology(topologies, clust)
                 if topo isa Missing && (clust === Clustering.SingleNodes || clust === Clustering.AllNodes)

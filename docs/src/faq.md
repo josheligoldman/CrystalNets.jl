@@ -116,7 +116,7 @@ This function expects the path of a directory containing CIF files within (possi
 
 ## [How can I directly access the genome of my structure instead of its name?](@id genomefromname)
 
-The result `x` of [`determine_topology`](@ref) is an [`InterpenetratedTopologyResult`](@ref). Its `length` gives the number of interpenetrated substructures. Each of its values, for instance `x[1]`, is a tuple `(topo, n)` meaning that the substructure is an `n`-fold catenated net of topology `topo`. `topo` itself is a [`TopologyResult`](@ref), which stores the result of a topology computation for possibly several clusterings. The [`TopologicalGenome`](@ref) associated to a given clustering can be extracted by indexing the [`TopologyResult`](@ref), for instance `t = topo[Clustering.SingleNodes]` (or simply `t = topo[:SingleNodes]`).
+The result `x` of [`determine_topology`](@ref) is an [`InterpenetratedTopologyResult`](@ref). Its `length` gives the number of substructures. Each of its values, for instance `x[1]`, is the topology `topo` of one of its substructure. `topo` itself is a [`TopologyResult`](@ref), which stores the result of a topology computation for possibly several clusterings. The [`TopologicalGenome`](@ref) associated to a given clustering can be extracted by indexing the [`TopologyResult`](@ref), for instance `t = topo[Clustering.SingleNodes]` (or simply `t = topo[:SingleNodes]`).
 
 For example:
 
@@ -133,10 +133,7 @@ InterpenetratedTopologyResult
 julia> length(result)
 1
 
-julia> topo, n = only(result);
-
-julia> n # catenation multiplicity
-1
+julia> topo = only(result);
 
 julia> topo
 AllNodes: rna

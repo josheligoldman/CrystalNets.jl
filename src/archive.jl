@@ -341,15 +341,13 @@ function make_archive(path, destination, verbose=false)
             flagerror[] = e
             InterpenetratedTopologyResult(true)
         end
-        for (i, (topology, nfold)) in enumerate(results)
-            nfold == 0 && continue
+        for (i, topology) in enumerate(results)
             genome = string(topology)
             if genome == "0-dimensional"
                 flag = true
                 push!(flagerror[]::Vector{Tuple{Vector{Int},String}}, (vmap, genome))
                 continue
             end
-            verbose && nfold != 1 && println(nfold, "-fold catenated net found for ", name)
             arc[genome] = length(results) == 1 ? name : (name * '_' * string(i))
         end
         if flag

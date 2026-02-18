@@ -448,7 +448,7 @@ function topological_key_unstable(net::CrystalNet{D,T}, collisions::CollisionLis
     # export_vtf("/tmp/tmpnet.vtf", tmpnet, 3)
 
     if !isnothing(net.options.basis_mapping)
-        net.options.basis_mapping[] = minimal_basis * newbasis
+        net.options.basis_mapping .= Int.(minimal_basis * newbasis)
     end
 
     if !isnothing(net.options.track_mapping)

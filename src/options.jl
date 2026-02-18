@@ -412,13 +412,13 @@ These boolean options have a default value that may be determined by [`Bonding`]
   Setting `keep_single_track` to `false` lifts this requirement; in this case, the mapping
   will be printed at the end of the topology computation for each topology, but it will not
   be held in the `track_mapping` field (and will not be made computationally accessible).
-- `basis_mapping`: track the basis matrix used to compute the canonical topology. To use it,
-  set `true`: at the end of the topology computation, `basis_mapping[]` will be an `SMatrix`
-  expressing the canonical basis vectors in terms of the net's fractional coordinate basis
-  (i.e. `basis_mapping[] * canonical_offset` gives the offset in the net's coordinates).
-  Default is `nothing`, which does no tracking.
-  `basis_mapping` also accepts being set to `Ref{Any}(nothing)` instead of `true`: the ref
-  will then be modified in-place.
+- `basis_mapping`: track the basis matrix used to compute the canonical topology (only for 3D
+  nets). To use it, set `true`: at the end of the topology computation, `basis_mapping` will
+  be an `MMatrix{3,3,Int,9}` expressing the canonical basis vectors in terms of the net's
+  fractional coordinate basis (i.e. `basis_mapping * canonical_offset` gives the offset in
+  the net's coordinates). Default is `nothing`, which does no tracking.
+  `basis_mapping` also accepts being set to an `MMatrix{3,3,Int,9}` directly, which will
+  then be modified in-place.
 
 ## Internal fields
 These fields are for internal use and should not be modified by the user:
@@ -482,7 +482,7 @@ struct Options
     throw_error::Bool
     track_mapping::Union{Nothing,Vector{Int}}
     keep_single_track::Bool
-    basis_mapping::Union{Nothing,Base.RefValue{Any}}
+    basis_mapping::Union{Nothing,MMatrix{3,3,Int,9}}
 
     function Options(; name="unnamed",
                        bonding=Bonding.Auto,
@@ -565,7 +565,7 @@ struct Options
         end
 
         _basis_mapping = if basis_mapping === true
-            Ref{Any}(nothing)
+            zero(MMatrix{3,3,Int,9})
         elseif basis_mapping === false
             nothing
         else

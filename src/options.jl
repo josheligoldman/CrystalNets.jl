@@ -412,6 +412,13 @@ These boolean options have a default value that may be determined by [`Bonding`]
   Setting `keep_single_track` to `false` lifts this requirement; in this case, the mapping
   will be printed at the end of the topology computation for each topology, but it will not
   be held in the `track_mapping` field (and will not be made computationally accessible).
+- `basis_mapping`: track the basis matrix used to compute the canonical topology. To use it,
+  set `true`: at the end of the topology computation, `basis_mapping[]` will be an `SMatrix`
+  expressing the canonical basis vectors in terms of the net's fractional coordinate basis
+  (i.e. `basis_mapping[] * canonical_offset` gives the offset in the net's coordinates).
+  Default is `nothing`, which does no tracking.
+  `basis_mapping` also accepts being set to `Ref{Any}(nothing)` instead of `true`: the ref
+  will then be modified in-place.
 
 ## Internal fields
 These fields are for internal use and should not be modified by the user:
@@ -475,6 +482,7 @@ struct Options
     throw_error::Bool
     track_mapping::Union{Nothing,Vector{Int}}
     keep_single_track::Bool
+    basis_mapping::Union{Nothing,Base.RefValue{Any}}
 
     function Options(; name="unnamed",
                        bonding=Bonding.Auto,
@@ -521,7 +529,8 @@ struct Options
                        error="",
                        throw_error=false,
                        track_mapping=nothing,
-                       keep_single_track=true
+                       keep_single_track=true,
+                       basis_mapping=nothing
                     )
 
         if throw_error && !isempty(error)
@@ -553,6 +562,14 @@ struct Options
             nothing
         else
             track_mapping
+        end
+
+        _basis_mapping = if basis_mapping === true
+            Ref{Any}(nothing)
+        elseif basis_mapping === false
+            nothing
+        else
+            basis_mapping
         end
 
         _split_O_vertex = if split_O_vertex === nothing
@@ -608,6 +625,7 @@ struct Options
             throw_error,
             _track_mapping,
             keep_single_track,
+            _basis_mapping,
         )
     end
 end

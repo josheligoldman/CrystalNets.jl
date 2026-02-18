@@ -699,6 +699,10 @@ function topological_key(net::CrystalNet{D,T}, (equiv_net, collisions)) where {D
     # tmpnet = CrystalNet{D,T}(PeriodicGraphEmbedding{D,T}(graph, net.pge.pos[minimal_vmap], net.pge.cell), net.types[minimal_vmap], net.options)
     # export_vtf("/tmp/tmpnet.vtf", tmpnet, 3)
 
+    if !isnothing(net.options.basis_mapping)
+        net.options.basis_mapping[] = minimal_basis * newbasis
+    end
+
     if !isnothing(net.options.track_mapping)
         map = rev_permute_mapping!(net.options, vmap).track_mapping
         if !net.options.keep_single_track

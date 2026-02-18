@@ -398,6 +398,7 @@ function topological_key_unstable(net::CrystalNet{D,T}, collisions::CollisionLis
 
     permutationranges = minute_collision_ranges(collisions)
 
+    minimal_basis = first(candidates)[2]
     for (v, basis) in candidates
         shrunk_candidate = candidate_key(shrunk_net, v, basis, dummy_edges, Val(true))
         newvmap, edgs = candidate_key_unstable(net, shrunk_candidate, v, basis, collision_ranges)
@@ -408,7 +409,7 @@ function topological_key_unstable(net::CrystalNet{D,T}, collisions::CollisionLis
         if edgs < minimal_edgs
             minimal_edgs = copy(edgs)
             vmap = copy(newvmap)
-            # minimal_basis = basis
+            minimal_basis = basis
         end
 
         new_positions = [(j = findfirst(==(first(range)), newvmap); j:(j+length(range)-1)) for range in permutationranges]
@@ -425,7 +426,7 @@ function topological_key_unstable(net::CrystalNet{D,T}, collisions::CollisionLis
             if edgs < minimal_edgs
                 minimal_edgs = copy(edgs)
                 vmap = copy(newvmap)
-                # minimal_basis = basis
+                # basis unchanged for within-candidate vertex swaps
             end
         end
         yield()
@@ -445,6 +446,10 @@ function topological_key_unstable(net::CrystalNet{D,T}, collisions::CollisionLis
 
     # tmpnet = CrystalNet{D,T}(PeriodicGraphEmbedding{D,T}(graph, net.pge.pos[minimal_vmap], net.pge.cell), net.types[minimal_vmap], net.options)
     # export_vtf("/tmp/tmpnet.vtf", tmpnet, 3)
+
+    if !isnothing(net.options.basis_mapping)
+        net.options.basis_mapping[] = minimal_basis * newbasis
+    end
 
     if !isnothing(net.options.track_mapping)
         map = rev_permute_mapping!(net.options, vmap).track_mapping

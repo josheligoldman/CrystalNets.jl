@@ -160,7 +160,7 @@ function candidate_key(net::CrystalNet{D,T}, u, basis, minimal_edgs, ::Val{unsta
             if !flag_bestedgs
                 j = length(edgs)
                 c = cmp(minimal_edgs[j], edgs[j])
-                c < 0 && return (Int[], Tuple{Int,Int,SVector{D,T}}[]) # early stop
+                c < 0 && return (Int[], Tuple{Int,Int,SVector{D,T}}[], Vector{SVector{D,Int32}}()) # early stop
                 c > 0 && (flag_bestedgs = true)
             end
         end
@@ -168,9 +168,9 @@ function candidate_key(net::CrystalNet{D,T}, u, basis, minimal_edgs, ::Val{unsta
     @toggleassert allunique(edgs)
     if !flag_bestedgs # the current list of edges is equal to minimal_edgs
         @toggleassert minimal_edgs == edgs
-        return (vmap, Tuple{Int,Int,SVector{D,T}}[])
+        return (vmap, Tuple{Int,Int,SVector{D,T}}[], offsets)
     end
-    return unstable_pass ? (newpos, offsets, vmap) : (vmap, edgs)
+    return unstable_pass ? (newpos, offsets, vmap) : (vmap, edgs, offsets)
 end
 
 
@@ -652,7 +652,7 @@ Return a unique topological key for the net, which is a topological invariant of
 For most non-internal purposes, [`topological_genome`](@ref) should be called instead.
 """
 function topological_key(net::CrystalNet{D}) where D
-    isempty(net.pge.pos) && return PeriodicGraph{D}()
+    isempty(net.pge.pos) && return PeriodicGraph{D}(), nothing
     shrunk_net, collisionsetup = collision_nodes(net)
     topological_key(shrunk_net, collisionsetup)
 end
@@ -663,18 +663,21 @@ function topological_key(net::CrystalNet{D,T}, (equiv_net, collisions)) where {D
     best_candidates = [(v, minimal_basis)]
     n = length(net.pge)
     _edgs = [(n + 1, 0, zero(SVector{D,T}))]
-    _minimal_vmap, minimal_edgs = candidate_key(net, v, minimal_basis, _edgs)
+    _minimal_vmap, minimal_edgs, minimal_offsets = candidate_key(net, v, minimal_basis, _edgs)
     minimal_vmaps = [_minimal_vmap]
+    minimal_offsets_list = [minimal_offsets]
     for (v, basis) in candidates
-        newvmap, edgs = candidate_key(net, v, basis, minimal_edgs)
+        newvmap, edgs, new_offsets = candidate_key(net, v, basis, minimal_edgs)
         isempty(newvmap) && continue
         @toggleassert edgs < minimal_edgs
         if isempty(edgs)
             push!(minimal_vmaps, newvmap)
+            push!(minimal_offsets_list, new_offsets)
             push!(best_candidates, (v, basis))
         elseif edgs < minimal_edgs
             minimal_edgs = edgs
             minimal_vmaps = [newvmap]
+            minimal_offsets_list = [new_offsets]
             minimal_basis = basis
             best_candidates = [(v, basis)]
         end
@@ -707,7 +710,53 @@ function topological_key(net::CrystalNet{D,T}, (equiv_net, collisions)) where {D
         end
     end
 
-    # finalbasis = minimal_basis * newbasis
-    # return Int.(finalbasis), minimal_vmap, graph
-    return graph
+    # Build the PeriodicGraphTransformation that maps net.pge.g -> graph.
+    # combined_basis = minimal_basis * newbasis maps new integer offsets to original
+    # fractional coords; its inverse M maps original offsets to canonical offsets.
+    best_offsets = first(minimal_offsets_list)
+    combined_basis = Rational{BigInt}.(minimal_basis) * Rational{BigInt}.(newbasis)
+    M = Matrix{Rational{BigInt}}(inv(combined_basis))
+    transform = PeriodicGraphTransformation{D}(vmap, best_offsets, M)
+
+    return graph, transform
+end
+
+
+"""
+    apply_transform(pgt::PeriodicGraphTransformation{D}, pg::PeriodicGraph{D}) where D
+
+Apply the [`PeriodicGraphTransformation`](@ref) `pgt` to the periodic graph `pg` and
+return the resulting canonical graph.
+
+The three steps are:
+1. Vertex permutation: `vertex_permutation(pg, pgt.vertex_permutation)`
+2. Vertex offset shift: `offset_representatives!(result, pgt.vertex_offsets)`
+3. Basis change: each edge offset `ofs` becomes `SVector{D,Int}(Int.(pgt.basis_change * ofs))`
+
+If `pgt` was obtained as `topological_genome(net; skip_minimize=true).transformation`
+for a net without collisions, then:
+```julia
+apply_transform(pgt, net.pge.g) == topological_genome(net; skip_minimize=true).genome
+```
+
+See also: [`PeriodicGraphTransformation`](@ref)
+"""
+function apply_transform(pgt::PeriodicGraphTransformation{D}, pg::PeriodicGraph{D}) where D
+    # Step 1: Apply vertex permutation (new vertex i = old vertex pgt.vertex_permutation[i])
+    pg1 = PeriodicGraphs.vertex_permutation(pg, pgt.vertex_permutation)
+    # Step 2: Shift vertex representatives by the stored lattice offsets
+    offset_representatives!(pg1, pgt.vertex_offsets)
+    # Step 3: Apply the rational basis change to each edge offset.
+    # M maps integer offsets (in the original lattice) to integer offsets in the canonical
+    # basis. The result is always an integer vector (guaranteed by the algorithm).
+    M = pgt.basis_change
+    function _transform_ofs(ofs::SVector{D,Int})
+        v = M * Vector{Rational{BigInt}}(ofs)  # Vector{Rational{BigInt}}
+        return SVector{D,Int}(Tuple(Int.(v)))
+    end
+    new_edges = PeriodicEdge{D}[
+        PeriodicEdge{D}(e.src, e.dst.v, _transform_ofs(e.dst.ofs))
+        for e in edges(pg1)
+    ]
+    return PeriodicGraph{D}(nv(pg1), new_edges)
 end

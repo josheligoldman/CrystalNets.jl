@@ -1004,6 +1004,37 @@ UnderlyingNets(g::Union{SmallPseudoGraph,AbstractString}; kwargs...) = Underlyin
 const SmallDimPeriodicGraph = Union{PeriodicGraph{0}, PeriodicGraph1D, PeriodicGraph2D, PeriodicGraph3D}
 
 """
+    PeriodicGraphTransformation{D}
+
+Represents the transformation applied by [`topological_genome`](@ref) to convert a
+periodic graph to its canonical form (the topological genome).
+
+The transformation consists of three sequential steps applied to the source graph `pg`:
+
+1. **Vertex permutation**: `vertex_permutation[i]` is the original vertex that becomes
+   canonical vertex `i`. Apply via `vertex_permutation(pg, pgt.vertex_permutation)`.
+2. **Vertex offsets**: `vertex_offsets[i]` is the integer lattice offset selecting which
+   periodic copy of vertex `i` to use as its representative. Apply via
+   `offset_representatives!(pg1, pgt.vertex_offsets)`.
+3. **Basis change**: `basis_change` is a `D×D` rational matrix `M` such that, for each
+   edge `(src, dst, ofs)` after steps 1–2, the canonical edge offset is
+   `SVector{D,Int}(Int.(M * ofs))`.
+
+If `pgt` is the transformation for a net with graph `pg` (with `skip_minimize=true` and
+no collisions), then `apply_transform(pgt, pg) == topological_genome(net).genome`.
+
+See also: [`apply_transform`](@ref)
+"""
+struct PeriodicGraphTransformation{D}
+    vertex_permutation::Vector{Int}
+    vertex_offsets::Vector{SVector{D,Int32}}
+    basis_change::Matrix{Rational{BigInt}}
+end
+
+const SmallDimPeriodicGraphTransformation = Union{Nothing,
+    PeriodicGraphTransformation{1}, PeriodicGraphTransformation{2}, PeriodicGraphTransformation{3}}
+
+"""
     TopologicalGenome
 
 A topological genome computed by `CrystalNets.jl`.
@@ -1030,10 +1061,13 @@ struct TopologicalGenome
     genome::SmallDimPeriodicGraph
     name::Union{Nothing,String}
     error::String
+    transformation::SmallDimPeriodicGraphTransformation
 end
 
-TopologicalGenome(g, name) = TopologicalGenome(g, name, "")
-TopologicalGenome(x::AbstractString) = TopologicalGenome(PeriodicGraph{0}(), nothing, x)
+TopologicalGenome(g, name, transform::SmallDimPeriodicGraphTransformation) = TopologicalGenome(g, name, "", transform)
+TopologicalGenome(g, name, error::AbstractString) = TopologicalGenome(g, name, error, nothing)
+TopologicalGenome(g, name) = TopologicalGenome(g, name, "", nothing)
+TopologicalGenome(x::AbstractString) = TopologicalGenome(PeriodicGraph{0}(), nothing, x, nothing)
 TopologicalGenome() = TopologicalGenome("")
 
 function ==(s1::TopologicalGenome, s2::TopologicalGenome)

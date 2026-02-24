@@ -454,5 +454,6 @@ function topological_key_unstable(net::CrystalNet{D,T}, collisions::CollisionLis
         end
     end
 
-    return graph
+    # Transformation tracking is not supported for nets with collisions.
+    return graph, nothing
 end

@@ -60,9 +60,9 @@ topological_genome(net::CrystalNet{0}) = TopologicalGenome(net.options.error)
 
 function topological_genome(net::CrystalNet{D,T}, collisionsetup)::TopologicalGenome where {D,T}
     try
-        g::PeriodicGraph{D} = topological_key(net, collisionsetup)
+        g::PeriodicGraph{D}, transform = topological_key(net, collisionsetup)
         ne(g) == 0 && return TopologicalGenome(net.options.error)
-        return TopologicalGenome(g, recognize_topology(g))
+        return TopologicalGenome(g, recognize_topology(g), transform)
     catch e
         isinterrupt(e) && rethrow()
         if T == Rational{BigInt} || !isoverfloworinexact(e)
@@ -82,9 +82,48 @@ If given a topological key (as a string), it is converted to a `PeriodicGraph` f
 
 Return a [`TopologicalGenome`](@ref).
 """
+function _compose_sort_transforms!(result::InterpenetratedTopologyResult, g::PeriodicGraph{D}) where D
+    # Only handle single-component, small-dimensional graphs where we can recompute the sort.
+    D in (1, 2, 3) || return
+    length(result.data) == 1 || return
+    topo, _ = only(result.data)
+    n = nv(g)
+    n == 0 && return
+
+    # Replicate the equilibrium + return_to_box + sortperm done in CrystalNet construction.
+    placement = equilibrium(g)  # D×n, vertex 1 pinned at origin
+    sort_offsets = Vector{SVector{D,Int}}(undef, n)
+    sort_pos    = Vector{SVector{D,Rational{Int64}}}(undef, n)
+    for i in 1:n
+        col = placement[:,i]
+        ofs = SVector{D,Int}(floor.(Int, col))
+        sort_offsets[i] = ofs
+        sort_pos[i]     = SVector{D,Rational{Int64}}(col .- ofs)
+    end
+    s = sortperm(sort_pos)  # s[new_i] = old_i
+
+    # Compose the sort into every unique TopologicalGenome's transformation.
+    # Composition formula (derived from offset_representatives! + vertex_permutation semantics):
+    #   composed_vmap[i]    = s[pgt.vertex_permutation[i]]
+    #   composed_offsets[i] = pgt.vertex_offsets[i] - sort_offsets[s[pgt.vertex_permutation[i]]]
+    for idx in topo.uniques
+        i = Int(idx)
+        genome_obj = topo.results[i]
+        pgt = genome_obj.transformation
+        pgt === nothing && continue
+        n_verts = length(pgt.vertex_permutation)
+        composed_vmap = [s[pgt.vertex_permutation[j]] for j in 1:n_verts]
+        composed_offsets = [SVector{D,Int32}(pgt.vertex_offsets[j] .- SVector{D,Int32}(sort_offsets[s[pgt.vertex_permutation[j]]])) for j in 1:n_verts]
+        composed_pgt = PeriodicGraphTransformation{D}(composed_vmap, composed_offsets, pgt.basis_change)
+        topo.results[i] = TopologicalGenome(genome_obj.genome, genome_obj.name, genome_obj.error, composed_pgt)
+    end
+end
+
 function topological_genome(g::PeriodicGraph, options::Options)
     nets = UnderlyingNets(g, options)
-    return topological_genome(nets)
+    result = topological_genome(nets)
+    _compose_sort_transforms!(result, g)
+    return result
 end
 topological_genome(s::String, options::Options) = topological_genome(PeriodicGraph(s), options)
 topological_genome(g::Union{String,PeriodicGraph}; kwargs...) = topological_genome(g, Options(; throw_error=true, kwargs...))

@@ -1,7 +1,7 @@
 name = "CrystalNets"
 uuid = "7952bbbe-a946-4118-bea0-081a0932faa9"
-authors = ["Lionel Zoubritzky lionel.zoubritzky@gmail.com"]
 version = "1.2.0"
+authors = ["Lionel Zoubritzky lionel.zoubritzky@gmail.com"]
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
@@ -28,7 +28,7 @@ LinearAlgebra = "1.10"
 Logging = "1.10"
 PeriodicGraphEmbeddings = "1.0"
 PeriodicGraphEquilibriumPlacement = "0.2"
-PeriodicGraphs = "1.0"
+PeriodicGraphs = "1.0.1"
 Pkg = "1.10"
 PrecompileTools = "1"
 ProgressMeter = "1.7"

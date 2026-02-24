@@ -1002,35 +1002,6 @@ UnderlyingNets(g::AbstractString, opts::Options) = UnderlyingNets(PeriodicGraph(
 UnderlyingNets(g::Union{SmallPseudoGraph,AbstractString}; kwargs...) = UnderlyingNets(g, Options(; kwargs...))
 
 const SmallDimPeriodicGraph = Union{PeriodicGraph{0}, PeriodicGraph1D, PeriodicGraph2D, PeriodicGraph3D}
-
-"""
-    PeriodicGraphTransformation{D}
-
-Represents the transformation applied by [`topological_genome`](@ref) to convert a
-periodic graph to its canonical form (the topological genome).
-
-The transformation consists of three sequential steps applied to the source graph `pg`:
-
-1. **Vertex permutation**: `vertex_permutation[i]` is the original vertex that becomes
-   canonical vertex `i`. Apply via `vertex_permutation(pg, pgt.vertex_permutation)`.
-2. **Vertex offsets**: `vertex_offsets[i]` is the integer lattice offset selecting which
-   periodic copy of vertex `i` to use as its representative. Apply via
-   `offset_representatives!(pg1, pgt.vertex_offsets)`.
-3. **Basis change**: `basis_change` is a `D×D` rational matrix `M` such that, for each
-   edge `(src, dst, ofs)` after steps 1–2, the canonical edge offset is
-   `SVector{D,Int}(Int.(M * ofs))`.
-
-If `pgt` is the transformation for a net with graph `pg` (with `skip_minimize=true` and
-no collisions), then `apply_transform(pgt, pg) == topological_genome(net).genome`.
-
-See also: [`apply_transform`](@ref)
-"""
-struct PeriodicGraphTransformation{D}
-    vertex_permutation::Vector{Int}
-    vertex_offsets::Vector{SVector{D,Int32}}
-    basis_change::Matrix{Rational{BigInt}}
-end
-
 const SmallDimPeriodicGraphTransformation = Union{Nothing,
     PeriodicGraphTransformation{1}, PeriodicGraphTransformation{2}, PeriodicGraphTransformation{3}}
 

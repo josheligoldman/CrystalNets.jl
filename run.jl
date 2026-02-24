@@ -1,4 +1,5 @@
-using CrystalNets, PeriodicGraphs
+using PeriodicGraphs
+using CrystalNets
 
 x = PeriodicGraph3D(2, PeriodicEdge3D[
     (1, 2, (-1, 0, -1)), (1, 2, (-1, 0, 0)),
@@ -28,5 +29,6 @@ genome = result.genome
 @show genome
 
 @show genome == apply_transform(pgt, x)
+@show genome == x
 
 @assert apply_transform(pgt, x) == genome

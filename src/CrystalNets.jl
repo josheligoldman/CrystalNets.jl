@@ -14,9 +14,7 @@ export CrystalNet,
        one_topology,
        StructureType,
        Bonding,
-       Clustering,
-       PeriodicGraphTransformation,
-       apply_transform
+       Clustering
 
 using LinearAlgebra: det, dot, norm, rank, cross
 import LinearAlgebra

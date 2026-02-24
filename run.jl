@@ -17,11 +17,12 @@ result = topological_genome(
     export_net=false,
     export_subnets=false,
 )
-result = first(only(result).results)
+result = last(only(only(result)))
 @show result
 
-pgt = result.transformation
+name = result.name
 genome = result.genome
+pgt = result.transformation
 
 @show pgt
 

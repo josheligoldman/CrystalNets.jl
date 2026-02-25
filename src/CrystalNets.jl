@@ -78,7 +78,7 @@ end
 include("utils.jl")
 include("options.jl") # Computation options
 include("types.jl") # Main internal type definitions used to represent topologies
-include("transformations.jl") # Handling of periodic graph transformations
+include("transformations.jl") # Handling of isomorphic transformations of Crystals
 include("input.jl") # Crystal file parsing and conversion to an internal type
 include("archive.jl") # Manipulation of the topological archive
 include("output.jl") # Crystal file exports

@@ -1,5 +1,6 @@
 [deps]
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
+CrystalNets = "7952bbbe-a946-4118-bea0-081a0932faa9"
 Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
 PeriodicGraphTransformations = "7b937ea1-b57c-48f6-beb8-0c69d15abede"
 PeriodicGraphs = "18c5b727-b240-4874-878a-f2e242435bab"

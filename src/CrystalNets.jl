@@ -26,6 +26,7 @@ using PeriodicGraphEquilibriumPlacement
 using PeriodicGraphs
 using StaticArrays
 using Graphs
+using PeriodicGraphTransformations
 
 import Logging
 using ProgressMeter

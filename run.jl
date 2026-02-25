@@ -1,4 +1,5 @@
 using PeriodicGraphs
+using PeriodicGraphTransformations
 using CrystalNets
 
 x = PeriodicGraph3D(2, PeriodicEdge3D[

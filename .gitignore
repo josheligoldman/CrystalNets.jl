@@ -4,3 +4,4 @@
 .ipynb_checkpoints/
 test/RCSRnets-*
 *.code-workspace
+**/.DS_Store

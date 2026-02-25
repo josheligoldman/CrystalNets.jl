@@ -2,6 +2,7 @@ using CrystalNets
 import CrystalNets as CNets
 using Test, Random
 using PeriodicGraphs
+using PeriodicGraphTransformations
 using StaticArrays
 using Graphs
 using Combinatorics
@@ -45,6 +46,47 @@ function count_valid_tests(n, failures)
         @test true
     end
     @test failures == 0
+end
+
+@testset "apply_transform" begin
+    g = PeriodicGraph{3}(2, PeriodicEdge{3}[
+        PeriodicEdge{3}(1, 1, SVector(1, 0, 0)),
+        PeriodicEdge{3}(1, 2, SVector(0, 1, 0)),
+        PeriodicEdge{3}(2, 2, SVector(0, 0, 1)),
+    ])
+    g0 = deepcopy(g)
+
+    pgt = PeriodicGraphTransformation(
+        SVector{3,Int}[SVector(1, -1, 0), SVector(0, 2, -1)],
+        [2, 1],
+        SMatrix{3,3,Int,9}(0, -1, 0,
+                           1,  0, 0,
+                           0,  0, 1),
+    )
+
+    transformed = apply_transform(pgt, g)
+
+    shifted = deepcopy(g)
+    offset_representatives!(shifted, pgt.vertex_offsets)
+    permuted = PeriodicGraphs.vertex_permutation(shifted, pgt.vertex_permutation)
+    expected = PeriodicGraph{3}(nv(permuted), PeriodicEdge{3}[
+        PeriodicEdge{3}(e.src, e.dst.v, SVector{3,Int}(pgt.basis_change * e.dst.ofs))
+        for e in edges(permuted)
+    ])
+
+    @test transformed == expected
+    @test g == g0
+
+    @test apply_transform(inv(pgt), transformed) == g
+
+    pgt2 = PeriodicGraphTransformation(
+        SVector{3,Int}[SVector(-2, 0, 1), SVector(1, 1, 0)],
+        [1, 2],
+        SMatrix{3,3,Int,9}(-1, 0, 0,
+                            0, 1, 0,
+                            0, 0, 1),
+    )
+    @test apply_transform(pgt * pgt2, g) == apply_transform(pgt, apply_transform(pgt2, g))
 end
 
 import CrystalNets.Clustering: SingleNodes, AllNodes, Standard, PE, PEM

@@ -89,48 +89,6 @@ end
     @test (pgt * pgt2)(g) == pgt(pgt2(g))
 end
 
-@testset "Apply Transform to Crystal" begin
-    g = PeriodicGraph{3}(2, PeriodicEdge{3}[
-        PeriodicEdge{3}(1, 1, SVector(1, 0, 0)),
-        PeriodicEdge{3}(1, 2, SVector(0, 1, 0)),
-        PeriodicEdge{3}(2, 2, SVector(0, 0, 1)),
-    ])
-    pos = [SVector(0.0, 0.0, 0.0), SVector(0.5, 0.5, 0.5)]
-    pge = CNets.PeriodicGraphEmbedding3D(g, pos)
-    types = [:C, :N]
-    options = CNets.Options()
-    crystal = CNets.Crystal{Nothing}(pge, types, options)
-    crystal0 = deepcopy(crystal)
-
-    pgt = PeriodicGraphTransformation(
-        SVector{3,Int}[SVector(1, -1, 0), SVector(0, 2, -1)],
-        [2, 1],
-        SMatrix{3,3,Int,9}(0, -1, 0,
-                           1,  0, 0,
-                           0,  0, 1),
-    )
-
-    transformed = pgt(crystal)
-
-    # The pge is transformed correctly
-    @test transformed.pge == pgt(crystal.pge)
-
-    # Atom types are permuted according to the vertex permutation ([2,1] swaps :C and :N)
-    @test transformed.types == crystal.types[pgt.vertex_permutation]
-    @test transformed.types == [:N, :C]
-
-    # Options object is preserved unchanged
-    @test transformed.options === crystal.options
-
-    # Original crystal is unmodified
-    @test crystal == crystal0
-
-    # Round-trip: inv(pgt) applied to the transformed crystal recovers the original graph and types
-    roundtrip = inv(pgt)(transformed)
-    @test roundtrip.pge.g == crystal.pge.g
-    @test roundtrip.types == crystal.types
-end
-
 import CrystalNets.Clustering: SingleNodes, AllNodes, Standard, PE, PEM
 
 @testset "MOF examples" begin

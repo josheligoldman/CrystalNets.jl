@@ -1003,7 +1003,7 @@ UnderlyingNets(g::Union{SmallPseudoGraph,AbstractString}; kwargs...) = Underlyin
 
 const SmallDimPeriodicGraph = Union{PeriodicGraph{0}, PeriodicGraph1D, PeriodicGraph2D, PeriodicGraph3D}
 const SmallDimPeriodicGraphTransformation = Union{Nothing,
-    PeriodicGraphTransformation{1}, PeriodicGraphTransformation{2}, PeriodicGraphTransformation{3}}
+    PeriodicGraphTransformation{1, 1}, PeriodicGraphTransformation{2, 4}, PeriodicGraphTransformation{3, 9}}
 
 """
     TopologicalGenome

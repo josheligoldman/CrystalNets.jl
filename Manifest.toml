@@ -212,7 +212,7 @@ version = "0.2.3"
 
 [[deps.PeriodicGraphs]]
 deps = ["Graphs", "LinearAlgebra", "PrecompileTools", "StaticArrays"]
-git-tree-sha1 = "fdbff5943fb51e417cc392e0060bef5950635d74"
+git-tree-sha1 = "328aea6fa7dd2b6b2f1da623b39084a2ecc6d5f0"
 repo-rev = "master"
 repo-url = "git@github.com:josheligoldman/PeriodicGraphs.jl.git"
 uuid = "18c5b727-b240-4874-878a-f2e242435bab"

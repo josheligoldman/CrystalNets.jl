@@ -716,7 +716,14 @@ function topological_key(net::CrystalNet{D,T}, (equiv_net, collisions)) where {D
     best_offsets = first(minimal_offsets_list)
     combined_basis = Rational{BigInt}.(minimal_basis) * Rational{BigInt}.(newbasis)
     M = Matrix{Rational{BigInt}}(inv(combined_basis))
-    transform = PeriodicGraphTransformation{D}(vmap, best_offsets, M)
+    M_smat = SMatrix{D, D}(Int.(M))
+    # Reindex offsets: old best_offsets[k] was for canonical vertex k (post-permutation);
+    # new vertex_offsets[i] is for original vertex i (pre-permutation).
+    reindexed_offsets = Vector{SVector{D, Int}}(undef, n)
+    for k in 1:n
+        reindexed_offsets[vmap[k]] = SVector{D, Int}(best_offsets[k])
+    end
+    transform = PeriodicGraphTransformation(reindexed_offsets, vmap, M_smat)
 
     return graph, transform
 end

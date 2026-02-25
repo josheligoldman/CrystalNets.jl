@@ -104,18 +104,22 @@ function _compose_sort_transforms!(result::InterpenetratedTopologyResult, g::Per
     s = sortperm(sort_pos)  # s[new_i] = old_i
 
     # Compose the sort into every unique TopologicalGenome's transformation.
-    # Composition formula (derived from offset_representatives! + vertex_permutation semantics):
-    #   composed_vmap[i]    = s[pgt.vertex_permutation[i]]
-    #   composed_offsets[i] = pgt.vertex_offsets[i] - sort_offsets[s[pgt.vertex_permutation[i]]]
+    # New semantics: offsets are indexed by source (original) vertex, applied before permutation.
+    # Sort transform: (-sort_offsets, s, I) applied to original graph g.
+    #   (SortedPeriodicGraphEmbedding uses offset_representatives!(g, .-offsets))
+    # PGT transform: (pgt.vertex_offsets, pgt.vertex_permutation, M) applied to sorted graph.
+    # Composed: offsets[i] = -sort_offsets[i] + pgt.vertex_offsets[inv_s[i]]
+    #           permutation[k] = s[pgt.vertex_permutation[k]]
+    inv_s = invperm(s)
     for idx in topo.uniques
         i = Int(idx)
         genome_obj = topo.results[i]
         pgt = genome_obj.transformation
         pgt === nothing && continue
         n_verts = length(pgt.vertex_permutation)
-        composed_vmap = [s[pgt.vertex_permutation[j]] for j in 1:n_verts]
-        composed_offsets = [SVector{D,Int32}(pgt.vertex_offsets[j] .- SVector{D,Int32}(sort_offsets[s[pgt.vertex_permutation[j]]])) for j in 1:n_verts]
-        composed_pgt = PeriodicGraphTransformation{D}(composed_vmap, composed_offsets, pgt.basis_change)
+        composed_vmap = [s[pgt.vertex_permutation[k]] for k in 1:n_verts]
+        composed_offsets = [SVector{D,Int}(pgt.vertex_offsets[inv_s[i]] .- sort_offsets[i]) for i in 1:n_verts]
+        composed_pgt = PeriodicGraphTransformation(composed_offsets, composed_vmap, pgt.basis_change)
         # test that the composition applied to the original graph gives the genome
         @assert apply_transform(composed_pgt, g) == genome_obj.genome "Composition failed for genome $(genome_obj.name) with idx $idx"
         topo.results[i] = TopologicalGenome(genome_obj.genome, genome_obj.name, genome_obj.error, composed_pgt)

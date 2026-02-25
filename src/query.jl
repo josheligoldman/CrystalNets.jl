@@ -61,7 +61,7 @@ topological_genome(net::CrystalNet{0}) = TopologicalGenome(net.options.error)
 function topological_genome(net::CrystalNet{D,T}, collisionsetup)::TopologicalGenome where {D,T}
     try
         g::PeriodicGraph{D}, transform = topological_key(net, collisionsetup)
-        @assert g == apply_transform(transform, net.pge.g) "Transformation does not yield the canical graph"
+        @assert g == transform(net.pge.g) "Transformation does not yield the canical graph"
         ne(g) == 0 && return TopologicalGenome(net.options.error)
         return TopologicalGenome(g, recognize_topology(g), transform)
     catch e
@@ -121,7 +121,7 @@ function _compose_sort_transforms!(result::InterpenetratedTopologyResult, g::Per
         composed_offsets = [SVector{D,Int}(pgt.vertex_offsets[inv_s[i]] .- sort_offsets[i]) for i in 1:n_verts]
         composed_pgt = PeriodicGraphTransformation(composed_offsets, composed_vmap, pgt.basis_change)
         # test that the composition applied to the original graph gives the genome
-        @assert apply_transform(composed_pgt, g) == genome_obj.genome "Composition failed for genome $(genome_obj.name) with idx $idx"
+        @assert composed_pgt(g) == genome_obj.genome "Composition failed for genome $(genome_obj.name) with idx $idx"
         topo.results[i] = TopologicalGenome(genome_obj.genome, genome_obj.name, genome_obj.error, composed_pgt)
     end
 end

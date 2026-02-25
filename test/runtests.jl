@@ -48,7 +48,7 @@ function count_valid_tests(n, failures)
     @test failures == 0
 end
 
-@testset "apply_transform" begin
+@testset "Apply Transform" begin
     g = PeriodicGraph{3}(2, PeriodicEdge{3}[
         PeriodicEdge{3}(1, 1, SVector(1, 0, 0)),
         PeriodicEdge{3}(1, 2, SVector(0, 1, 0)),
@@ -64,7 +64,7 @@ end
                            0,  0, 1),
     )
 
-    transformed = apply_transform(pgt, g)
+    transformed = pgt(g)
 
     shifted = deepcopy(g)
     offset_representatives!(shifted, pgt.vertex_offsets)
@@ -77,7 +77,7 @@ end
     @test transformed == expected
     @test g == g0
 
-    @test apply_transform(inv(pgt), transformed) == g
+    @test (inv(pgt))(transformed) == g
 
     pgt2 = PeriodicGraphTransformation(
         SVector{3,Int}[SVector(-2, 0, 1), SVector(1, 1, 0)],
@@ -86,7 +86,7 @@ end
                             0, 1, 0,
                             0, 0, 1),
     )
-    @test apply_transform(pgt * pgt2, g) == apply_transform(pgt, apply_transform(pgt2, g))
+    @test (pgt * pgt2)(g) == pgt(pgt2(g))
 end
 
 import CrystalNets.Clustering: SingleNodes, AllNodes, Standard, PE, PEM

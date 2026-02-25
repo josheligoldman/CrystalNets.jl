@@ -27,10 +27,10 @@ pgt = result.transformation
 
 @show pgt
 
-@show apply_transform(pgt, x)
+@show pgt(x)
 @show genome
 
-@show genome == apply_transform(pgt, x)
+@show genome == pgt(x)
 @show genome == x
 
-@assert apply_transform(pgt, x) == genome
+@assert pgt(x) == genome

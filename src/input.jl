@@ -8,21 +8,21 @@ include("guessbonds.jl")
 
 
 """
-    parse_cif(file_path)
+    parse_cif(io::IO, name::AbstractString="")
+    parse_cif(file_path::AbstractString)
 
 Parse a CIF file and return a dictionary where each identifier (without the
 starting '_' character) is linked to its value.
 Values are either a string or a vector of string (if defined in a loop).
 """
-function parse_cif(file)
-    name = splitext(basename(file))[1]
+function parse_cif(io::IO, name::AbstractString="")
     all_data = Dict{String, Union{String, Vector{String}}}()
     inloop = false
     loopisspecified = false
     loopspec = String[]
     loop_n = 0
 
-    l = read(file, String)
+    l = read(io, String)
     i, j, x = nextword(l, 0)
     lastword = ""
     while i != 0
@@ -103,6 +103,9 @@ function parse_cif(file)
     all_data["__name"] = name
     return all_data
 end
+function parse_cif(file::AbstractString)
+    parse_cif(open(file, "r"), splitext(basename(file))[1])
+end
 
 
 function tryparsestrip(T, s, default=nothing)
@@ -150,6 +153,7 @@ end
 Make a CIF object out of the parsed file.
 """
 CIF(file::AbstractString, label_for_type::Bool=false) = CIF(parse_cif(file), label_for_type)
+CIF(io::IO, label_for_type::Bool=false, name::AbstractString="") = CIF(parse_cif(io, name), label_for_type)
 function CIF(parsed::Dict{String, Union{Vector{String},String}}, label_for_type::Bool=false)
     natoms = length(parsed["atom_site_label"]::Vector{String})
     equivalentpositions = haskey(parsed, "symmetry_equiv_pos_as_xyz") ?
@@ -1576,3 +1580,18 @@ function parse_chemfile(_path, options::Options)
     return parse_as_chemfile(frame, options, name)
 end
 parse_chemfile(path; kwargs...) = parse_chemfile(path, Options(; kwargs...))
+
+function parse_chemfile(io::IO, name::AbstractString, options::Options)
+    if options.name == "unnamed"
+        options = Options(options; name)
+    end
+    cif = expand_symmetry(CIF(io, options.label_for_type, name))
+    if options.authorize_pruning
+        neededprune, cif = prune_collisions(cif)
+        if neededprune && !(options.dryrun isa Nothing)
+            options.dryrun[:collisions] = nothing
+        end
+    end
+    return parse_as_cif(cif, options, name)
+end
+parse_chemfile(io::IO, name::AbstractString; kwargs...) = parse_chemfile(io, name, Options(; kwargs...))

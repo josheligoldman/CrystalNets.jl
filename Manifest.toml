@@ -206,7 +206,9 @@ version = "1.0.2"
 
 [[deps.PeriodicGraphEquilibriumPlacement]]
 deps = ["Graphs", "LinearAlgebra", "PeriodicGraphs", "PrecompileTools", "SparseArrays", "StaticArrays"]
-git-tree-sha1 = "de8bf75bc047a01996052c1bee283cb7bcffa618"
+git-tree-sha1 = "fd06fe3005efc52b3960bee13b022489a2d51cab"
+repo-rev = "main"
+repo-url = "git@github.com:josheligoldman/PeriodicGraphEquilibriumPlacement.jl.git"
 uuid = "72a2d4b8-adbf-4c88-a101-42c807716bb0"
 version = "0.2.3"
 

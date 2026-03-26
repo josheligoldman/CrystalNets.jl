@@ -5,3 +5,4 @@
 test/RCSRnets-*
 *.code-workspace
 **/.DS_Store
+/memleak_tests

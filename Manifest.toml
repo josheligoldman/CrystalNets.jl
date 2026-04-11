@@ -2,7 +2,7 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "98f3e9cb385a8f3cbe43c34bee96f6404678f85f"
+project_hash = "d7f5939d4408aaf57c8702ada2a8867619c883b2"
 
 [[deps.ArgParse]]
 deps = ["Logging", "TextWrap"]
@@ -206,15 +206,13 @@ version = "1.0.2"
 
 [[deps.PeriodicGraphEquilibriumPlacement]]
 deps = ["Graphs", "LinearAlgebra", "PeriodicGraphs", "PrecompileTools", "SparseArrays", "StaticArrays"]
-git-tree-sha1 = "fd06fe3005efc52b3960bee13b022489a2d51cab"
-repo-rev = "main"
-repo-url = "git@github.com:josheligoldman/PeriodicGraphEquilibriumPlacement.jl.git"
+git-tree-sha1 = "de8bf75bc047a01996052c1bee283cb7bcffa618"
 uuid = "72a2d4b8-adbf-4c88-a101-42c807716bb0"
 version = "0.2.3"
 
 [[deps.PeriodicGraphTransformations]]
 deps = ["Graphs", "LinearAlgebra", "PeriodicGraphEmbeddings", "PeriodicGraphs", "StaticArrays"]
-git-tree-sha1 = "348fc0a52860a05598a0c425d2e8a9d8b036b5aa"
+git-tree-sha1 = "cfc92c58e447d628ea3681c8fb454b6dd6da3c87"
 repo-rev = "main"
 repo-url = "git@github.com:josheligoldman/PeriodicGraphTransformations.jl.git"
 uuid = "7b937ea1-b57c-48f6-beb8-0c69d15abede"

@@ -14,7 +14,9 @@ export CrystalNet,
        one_topology,
        StructureType,
        Bonding,
-       Clustering
+       Clustering,
+       equiv_mapping,
+       isequiv
 
 using LinearAlgebra: det, dot, norm, rank, cross
 import LinearAlgebra
@@ -86,6 +88,7 @@ include("stability.jl") # Functions related to unstable nets
 include("minimization.jl") # Cell minimization
 include("topology.jl") # Main functions of the algorithm
 include("query.jl") # Entry point for the user-facing functions
+include("transformations.jl") # equiv_mapping and isequiv for PeriodicGraph{3}
 include("executable.jl") # Entry point for the argument parsing of the executable
 include("precompile.jl")
 

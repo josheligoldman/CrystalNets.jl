@@ -28,3 +28,28 @@ end
 function isequiv(pg1::PeriodicGraph{3}, pg2::PeriodicGraph{3})::Bool
     return !isnothing(equiv_mapping(pg1, pg2))
 end
+
+"""
+    isequiv(pge1::PeriodicGraphEmbedding{3}, pge2::PeriodicGraphEmbedding{3}) -> Bool
+
+Return `true` if the two periodic graph embeddings are equivalent: their underlying
+graphs are topologically equivalent (`equiv_mapping` succeeds) and, after applying that
+canonicalizing transformation to `pge1`, the unit cells and per-vertex fractional
+positions match (`isapprox`).
+
+Caveats:
+- No continuous translation is applied — embeddings related by a global fractional shift
+  are not considered equivalent.
+- The basis change in the returned `PeriodicGraphTransformation` comes from canonicalization,
+  not from any user-supplied basis. When the underlying graph has nontrivial automorphisms,
+  two embeddings related by a basis change may be rejected because the canonicalizing PGT
+  does not select that particular basis. Compare embeddings already in a common cell.
+"""
+function isequiv(pge1::PeriodicGraphEmbedding{3}, pge2::PeriodicGraphEmbedding{3})::Bool
+    pgt = equiv_mapping(pge1.g, pge2.g)
+    isnothing(pgt) && return false
+    pge1_ = pgt(pge1)
+    isapprox(pge1_.cell.mat, pge2.cell.mat) || return false
+    length(pge1_.pos) == length(pge2.pos) || return false
+    return all(isapprox(p1, p2) for (p1, p2) in zip(pge1_.pos, pge2.pos))
+end

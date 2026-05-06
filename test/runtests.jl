@@ -2,6 +2,7 @@ using CrystalNets
 import CrystalNets as CNets
 using Test, Random
 using PeriodicGraphs
+using PeriodicGraphEmbeddings
 using PeriodicGraphTransformations
 using StaticArrays
 using Graphs
@@ -617,4 +618,96 @@ end
     @test string(mogtopo) == "mog"
     # Test ordering of species is correct while parsing with chemfiles
     @test parse_chemfile(testcase).types == [repeat([:Si], 12); repeat([:O], 24)]
+end
+
+# pcu (primitive cubic): 1 vertex with 3 periodic self-loops along x, y, z.
+function _make_pcu_pg()
+    pg = PeriodicGraph{3}(1)
+    add_edge!(pg, PeriodicEdge{3}(1, 1, SVector(1, 0, 0)))
+    add_edge!(pg, PeriodicEdge{3}(1, 1, SVector(0, 1, 0)))
+    add_edge!(pg, PeriodicEdge{3}(1, 1, SVector(0, 0, 1)))
+    return pg
+end
+
+# dia: 2 vertices, 4 edges per vertex (tetrahedral).
+function _make_dia_pg()
+    pg = PeriodicGraph{3}(2)
+    for ofs in (SVector(0, 0, 0), SVector(-1, 0, 0), SVector(0, -1, 0), SVector(0, 0, -1))
+        add_edge!(pg, PeriodicEdge{3}(1, 2, ofs))
+    end
+    return pg
+end
+
+@testset "isequiv / equiv_mapping: PeriodicGraph{3}" begin
+    pg = _make_pcu_pg()
+
+    # Reflexivity
+    @test isequiv(pg, _make_pcu_pg())
+    @test !isnothing(equiv_mapping(pg, _make_pcu_pg()))
+
+    # Equivalent under unimodular basis change
+    basis_change = SMatrix{3,3,Int,9}(1, 0, 0,
+                                       1, 1, 0,
+                                       0, 0, 1)
+    pgt_b = PeriodicGraphTransformation([SVector(0, 0, 0)], [1], basis_change)
+    @test isequiv(pg, pgt_b(pg))
+
+    # Different vertex count → short-circuit
+    @test !isequiv(pg, PeriodicGraph{3}(4))
+    @test isnothing(equiv_mapping(pg, PeriodicGraph{3}(4)))
+
+    # Same nv, different edge count → short-circuit
+    pg_extra = deepcopy(pg)
+    add_edge!(pg_extra, PeriodicEdge{3}(1, 1, SVector(1, 1, 0)))
+    @test !isequiv(pg, pg_extra)
+    @test isnothing(equiv_mapping(pg, pg_extra))
+
+    # dia ≠ pcu (different nv triggers short-circuit)
+    @test !isequiv(pg, _make_dia_pg())
+
+    # dia equivalent to itself
+    @test isequiv(_make_dia_pg(), _make_dia_pg())
+
+    # equiv_mapping returns a PGT that actually maps the graphs together
+    pg_perm = pgt_b(pg)
+    pgt_recovered = equiv_mapping(pg, pg_perm)
+    @test !isnothing(pgt_recovered)
+    @test pgt_recovered isa PeriodicGraphTransformation{3, 9}
+end
+
+@testset "isequiv: PeriodicGraphEmbedding{3}" begin
+    pg = _make_pcu_pg()
+    cell = Cell(SMatrix{3,3,BigFloat,9}(BigFloat[4 0 0; 0 4 0; 0 0 4]))
+    pos = [SVector(0.0, 0.0, 0.0)]
+
+    pge = PeriodicGraphEmbedding{3, Float64}(deepcopy(pg), copy(pos), cell)
+
+    # Reflexivity
+    @test isequiv(pge, PeriodicGraphEmbedding{3, Float64}(deepcopy(pg), copy(pos), cell))
+
+    # Different topology → not equivalent
+    pge_dia = PeriodicGraphEmbedding{3, Float64}(_make_dia_pg(),
+        [SVector(0.0, 0.0, 0.0), SVector(0.25, 0.25, 0.25)], cell)
+    @test !isequiv(pge, pge_dia)
+
+    # Same graph but shifted fractional position → not equivalent
+    # (equiv_mapping returns identity PGT, then coord comparison fails)
+    pge_shift = PeriodicGraphEmbedding{3, Float64}(deepcopy(pg),
+        [SVector(0.3, 0.0, 0.0)], cell)
+    @test !isequiv(pge, pge_shift)
+
+    # Same graph + coords but different cell mat → not equivalent
+    cell_alt = Cell(SMatrix{3,3,BigFloat,9}(BigFloat[5 0 0; 0 5 0; 0 0 5]))
+    pge_diff_cell = PeriodicGraphEmbedding{3, Float64}(deepcopy(pg), copy(pos), cell_alt)
+    @test !isequiv(pge, pge_diff_cell)
+
+    # Two-vertex (dia) self-equivalence and rejection of a global fractional shift.
+    # `equiv_mapping` returns no continuous translation, so a uniform shift is
+    # considered a different embedding even though the graph is identical.
+    pos_dia_a = [SVector(0.0,  0.0,  0.0),  SVector(0.25, 0.25, 0.25)]
+    pos_dia_b = [SVector(0.5,  0.5,  0.5),  SVector(0.75, 0.75, 0.75)]
+    pge_dia_a = PeriodicGraphEmbedding{3, Float64}(_make_dia_pg(), pos_dia_a, cell)
+    pge_dia_b = PeriodicGraphEmbedding{3, Float64}(_make_dia_pg(), pos_dia_b, cell)
+    @test isequiv(pge_dia_a, pge_dia_a)
+    @test !isequiv(pge_dia_a, pge_dia_b)
 end

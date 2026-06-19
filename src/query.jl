@@ -16,6 +16,11 @@ Return a [`TopologicalGenome`](@ref).
 """
 function topological_genome(net::CrystalNet{D,T})::TopologicalGenome where {D,T}
     isempty(net.types) && return TopologicalGenome(net.options.error)
+    if net.options.compute_pgt && !net.options.skip_minimize
+        msg = "compute_pgt requires skip_minimize"
+        net.options.throw_error && error(msg)
+        return TopologicalGenome(msg)
+    end
     if net.options.ignore_types
         net = CrystalNet{D,T}(net.pge, fill(Symbol(""), length(net.types)), net.options)
     end
@@ -61,7 +66,7 @@ topological_genome(net::CrystalNet{0}) = TopologicalGenome(net.options.error)
 function topological_genome(net::CrystalNet{D,T}, collisionsetup)::TopologicalGenome where {D,T}
     try
         g::PeriodicGraph{D}, transform = topological_key(net, collisionsetup)
-        @assert g == transform(net.pge.g) "Transformation does not yield the canical graph"
+        @assert transform === nothing || g == transform(net.pge.g) "Transformation does not yield the canical graph"
         ne(g) == 0 && return TopologicalGenome(net.options.error)
         return TopologicalGenome(g, recognize_topology(g), transform)
     catch e

@@ -710,20 +710,26 @@ function topological_key(net::CrystalNet{D,T}, (equiv_net, collisions)) where {D
         end
     end
 
-    # Build the PeriodicGraphTransformation that maps net.pge.g -> graph.
-    # combined_basis = minimal_basis * newbasis maps new integer offsets to original
-    # fractional coords; its inverse M maps original offsets to canonical offsets.
-    best_offsets = first(minimal_offsets_list)
-    combined_basis = Rational{BigInt}.(minimal_basis) * Rational{BigInt}.(newbasis)
-    M = Matrix{Rational{BigInt}}(inv(combined_basis))
-    M_smat = SMatrix{D, D}(Int.(M))
-    # Reindex offsets: old best_offsets[k] was for canonical vertex k (post-permutation);
-    # new vertex_offsets[i] is for original vertex i (pre-permutation).
-    reindexed_offsets = Vector{SVector{D, Int}}(undef, n)
-    for k in 1:n
-        reindexed_offsets[vmap[k]] = SVector{D, Int}(best_offsets[k])
+    # Build the PeriodicGraphTransformation that maps net.pge.g -> graph, but only if
+    # requested: it is only meaningful when no minimization replaced the net (enforced
+    # by the compute_pgt => skip_minimize check in topological_genome).
+    transform = if net.options.compute_pgt
+        # combined_basis = minimal_basis * newbasis maps new integer offsets to original
+        # fractional coords; its inverse M maps original offsets to canonical offsets.
+        best_offsets = first(minimal_offsets_list)
+        combined_basis = Rational{BigInt}.(minimal_basis) * Rational{BigInt}.(newbasis)
+        M = Matrix{Rational{BigInt}}(inv(combined_basis))
+        M_smat = SMatrix{D, D}(Int.(M))
+        # Reindex offsets: old best_offsets[k] was for canonical vertex k (post-permutation);
+        # new vertex_offsets[i] is for original vertex i (pre-permutation).
+        reindexed_offsets = Vector{SVector{D, Int}}(undef, n)
+        for k in 1:n
+            reindexed_offsets[vmap[k]] = SVector{D, Int}(best_offsets[k])
+        end
+        PeriodicGraphTransformation(reindexed_offsets, vmap, M_smat)
+    else
+        nothing
     end
-    transform = PeriodicGraphTransformation(reindexed_offsets, vmap, M_smat)
 
     return graph, transform
 end

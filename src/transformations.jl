@@ -11,6 +11,7 @@ function equiv_mapping(pg1::PeriodicGraph{3}, pg2::PeriodicGraph{3})::Union{Noth
     ne(pg1) != ne(pg2) && return nothing
     opts = CrystalNets.Options(
         skip_minimize=true,
+        compute_pgt=true,
         export_input=false,
         export_trimmed=false,
         export_attributions=false,

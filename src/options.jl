@@ -338,6 +338,10 @@ string is equivalent to `false`.
 - `cutoff_coeff`: coefficient used to detect bonds. Default is 0.75, higher
   values will include bonds that were considered too long before.
 - `skip_minimize`: assume that the cell is already the unit cell (default is false).
+- `compute_pgt`: also build the [`PeriodicGraphTransformation`](@ref) mapping the input
+  graph to the canonical genome (default is false). Requires `skip_minimize` to be true,
+  since minimization would otherwise replace the net and make the transformation
+  meaningless with respect to the input graph.
 - `dimensions`: the set of crystal net dimensions to consider. For instance, putting
   `Set(3)` will ensure that only 3-dimensional nets are considered.
   Default is `Set([1,2,3])`.
@@ -463,6 +467,7 @@ struct Options
 
     # Topology computation options
     skip_minimize::Bool
+    compute_pgt::Bool
     dimensions::Set{Int}
     ignore_types::Bool
     export_net::String
@@ -512,6 +517,7 @@ struct Options
                        export_attributions="",
                        export_clusters="",
                        skip_minimize=false,
+                       compute_pgt=false,
                        dimensions=Set{Int}([1,2,3]),
                        ignore_types=true,
                        export_net=false,
@@ -598,6 +604,7 @@ struct Options
             _export_attributions,
             _export_clusters,
             skip_minimize,
+            compute_pgt,
             Set{Int}(dimensions),
             ignore_types,
             _export_net,
